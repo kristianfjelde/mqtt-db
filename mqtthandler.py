@@ -8,10 +8,10 @@ import _mysql_exceptions
 BROKER = "test.mosquitto.org"
 PORT = 1883
 
-DBHOST = "mysql.stud.ntnu.no"
-DBUSER = "kristiap_test"
-DBPASS = "ttm411515"
-DBNAME = "kristiap_ttm4115"
+DBHOST = ""
+DBUSER = ""
+DBPASS = ""
+DBNAME = ""
 
 # TODO: Achieve db connection  [X]
 # TODO: Solve "_mysql.connection' object has no attribute 'cursor"
