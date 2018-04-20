@@ -7,10 +7,10 @@ import _mysql_exceptions
 BROKER = "188.166.100.22"
 PORT = 1883
 
-DBHOST = "mysql.stud.ntnu.no"
-DBUSER = "kristiap_test"
+DBHOST = "localhost"
+DBUSER = "ttm4115"
 DBPASS = "ttm411515"
-DBNAME = "kristiap_ttm4115"
+DBNAME = "ttm4115"
 
 # TODO: Achieve db connection  [X]
 # TODO: Solve "_mysql.connection' object has no attribute 'cursor"
@@ -107,7 +107,7 @@ class dbHandler:
 
 
     def updatestatus(self, payload):
-        data = json.loads(payload)
+        data = json.loads(payload.decode('utf-8'))
         if len(data) == 2 and data[0][:3] == "bin":
             formatted_string = """
             INSERT INTO bins (bin_id, amount, time) 
