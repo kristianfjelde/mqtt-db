@@ -24,7 +24,9 @@ class mqttHandler:
     def on_message(self, client, userdata, msg):
         print("Received message from topic {}".format(msg.topic))
         if msg.topic == "ttm4115/15/server/fetch":
-            dbHandler.fetchhistory(self.d, msg.payload)
+            res = dbHandler.fetchhistory(self.d, msg.payload)
+
+            self.client.publish("ttm4115/15/userdevice", res)
 
         elif msg.topic == "ttm4115/15/server/routeplanner":
             dbHandler.routeplanner(self.d, msg.payload)
@@ -59,33 +61,38 @@ class mqttHandler:
 
         self.d = dbHandler()
 
-        #thread = Thread(target=self.client.loop_forever())
-        #thread.start()
-        #thread.join()
 
 
 class dbHandler:
 
+    def addresshistory(self, address):
+        print(address)
+        formatted_string = "SELECT * FROM users WHERE address = '{0}';".format(address)
+        res = self.doquery(formatted_string)
+
+        bin_id = res.fetch_row(res.num_rows(),1)[0]['bin_id'].decode('utf-8')
+
+        formatted_string = "SELECT bin_id, amount, time FROM bins WHERE bin_id = '{0}';".format(bin_id)
+        res = self.doquery(formatted_string)
+
+        iter_list = res.fetch_row(0,1)
+        history_list = []
+        for element in iter_list:
+            history_list.append([element['amount'], element['time']])
+
+        return [address, [history_list]]
+
     def fetchhistory(self, payload):
-        #SELECT b.amount, b.time
-        #FROM users a, bins b
-        #WHERE a.bin_id = b.bin_id
-        #ORDER BY time ASC;
+        addresses = json.loads(payload)
+        res = []
 
-        #TODO: Returnerer amount og timestamp
-        #Todo: Må klare å spørre etter for gitt addresse
+        for element in addresses:
+            res.append(self.addresshistory(element))
 
-        #SELECT * FROM users WHERE address = "Oljeveien 1"
-        # WHERE address = {0}".format("Oljeveien 1"))
+        return json.dumps(res)
 
-        data = json.loads(payload.decode('utf-8'))
-        try:
-            for element in data['adresses']:
-                self.db.query("SELECT * FROM users")
-                self.db.fetchall()
 
-        except UnboundLocalError:
-            print("'adresses' not found in payload")
+
 
     def routeplanner(self, payload):
         data = json.loads(payload.decode('utf-8'))
@@ -95,7 +102,12 @@ class dbHandler:
 
 
     def register(self, payload):
-        data = json.loads(payload.decode('utf-8'))
+        try:
+            data = json.loads(payload.decode('utf-8'))
+        except json.decoder.JSONDecodeError as err:
+            print(err)
+            return "err"
+
         if len(data) == 2 and data[0][:3] == "bin":
             formatted_string = """
             INSERT INTO users (bin_id, address, time)
@@ -129,8 +141,6 @@ class dbHandler:
              print("Failed to execute due to {}".format(err))
 
         if self.res is not None:
-            print("Results: ")
-            print(self.res.fetch_row())
             return self.res
 
         self.db.close()
@@ -144,6 +154,10 @@ class dbHandler:
         except (_mysql_exceptions.OperationalError, NameError) as err:
             print("Error in db connection: {0}".format(err))
             exit(1)
+
+        a = ["Oljeveien 1"]
+
+        self.fetchhistory(json.dumps(a))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.db.close()
