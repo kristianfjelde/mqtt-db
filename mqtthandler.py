@@ -78,7 +78,7 @@ class dbHandler:
         #SELECT * FROM users WHERE address = "Oljeveien 1"
         # WHERE address = {0}".format("Oljeveien 1"))
 
-        data = json.loads(payload)
+        data = json.loads(payload.decode('utf-8'))
         try:
             for element in data['adresses']:
                 self.db.query("SELECT * FROM users")
@@ -88,14 +88,14 @@ class dbHandler:
             print("'adresses' not found in payload")
 
     def routeplanner(self, payload):
-        data = json.loads(payload)
+        data = json.loads(payload.decode('utf-8'))
         print("Routeplanner activated")
 
 
 
 
     def register(self, payload):
-        data = json.loads(payload)
+        data = json.loads(payload.decode('utf-8'))
         if len(data) == 2 and data[0][:3] == "bin":
             formatted_string = """
             INSERT INTO users (bin_id, address, time)
