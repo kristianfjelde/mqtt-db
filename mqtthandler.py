@@ -4,7 +4,7 @@ import json
 import _mysql
 import _mysql_exceptions
 
-BROKER = "test.mosquitto.org"
+BROKER = "188.166.100.22"
 PORT = 1883
 
 DBHOST = "mysql.stud.ntnu.no"
@@ -67,10 +67,16 @@ class mqttHandler:
 class dbHandler:
 
     def fetchhistory(self, payload):
-        #SELECT b.amount, b.time, a.address
+        #SELECT b.amount, b.time
         #FROM users a, bins b
         #WHERE a.bin_id = b.bin_id
         #ORDER BY time ASC;
+
+        #TODO: Returnerer amount og timestamp
+        #Todo: Må klare å spørre etter for gitt addresse
+
+        #SELECT * FROM users WHERE address = "Oljeveien 1"
+        # WHERE address = {0}".format("Oljeveien 1"))
 
         data = json.loads(payload)
         try:
@@ -86,44 +92,54 @@ class dbHandler:
         print("Routeplanner activated")
 
 
+
+
     def register(self, payload):
         data = json.loads(payload)
-
-        for element in data['adresses']:
-            self.db.query("SELECT * FROM adresses")
-            receive = self.db.fetchall()
-
-        print("'adresses' not found in payload")
-
-        json_data = json.dumps(data)
-        mqttHandler.send_message("ttm4115/15/workstation/server", json_data)
+        if len(data) == 2 and data[0][:3] == "bin":
+            formatted_string = """
+            INSERT INTO users (bin_id, address, time)
+            VALUES ('{0}', '{1}', NOW());""".format(data[0], data[1])
+            print(formatted_string)
+            self.doquery(formatted_string)
+        else:
+            return "err"
 
 
     def updatestatus(self, payload):
         data = json.loads(payload)
         if len(data) == 2 and data[0][:3] == "bin":
-            formatted_string = """INSERT INTO bins (bin_id, amount, time) VALUES ('{0}', {1}, NOW());""".format(data[0], data[1])
-            print(formatted_string)
-            try:
-                self.db.query(formatted_string)
-                self.r = self.db.store_result()
+            formatted_string = """
+            INSERT INTO bins (bin_id, amount, time) 
+            VALUES ('{0}', {1}, NOW());""".format(data[0], data[1])
 
-            except (_mysql_exceptions.MySQLError, _mysql_exceptions.DataError) as err:
-                print("Failed to execute due to {}".format(err))
-
-            if self.r != None:
-                print("Results: ")
-                print(self.r.fetch_row())
-
+            res = self.doquery(formatted_string)
             return "Success"
         else:
             return "err"
 
-    def __init__(self):
 
+    def doquery(self,msg):
+        self.db = _mysql.connect(DBHOST, DBUSER, DBPASS, DBNAME)
+        try:
+            self.db.query(msg)
+            self.res = self.db.store_result()
+
+        except (_mysql_exceptions.MySQLError, _mysql_exceptions.DataError) as err:
+             print("Failed to execute due to {}".format(err))
+
+        if self.res is not None:
+            print("Results: ")
+            print(self.res.fetch_row())
+            return self.res
+
+        self.db.close()
+
+
+    def __init__(self):
         try:
             self.db = _mysql.connect(DBHOST, DBUSER, DBPASS, DBNAME)
-            print("Connected successfully")
+            self.db.close()
 
         except (_mysql_exceptions.OperationalError, NameError) as err:
             print("Error in db connection: {0}".format(err))
