@@ -111,7 +111,13 @@ class dbHandler:
 
 
     def fetchhistory(self, payload):
-        addresses = json.loads(payload)
+        try:
+            addresses = json.loads(payload)
+        except TypeError as err:
+            print("TypeError has occured")
+            print(err)
+            addressesø = json.loads(payload.decode('utf-8'))
+
         res = []
 
         for element in addresses:
