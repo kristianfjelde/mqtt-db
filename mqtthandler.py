@@ -42,7 +42,7 @@ class mqttHandler:
 
         elif msg.topic == "ttm4115/15/server/fetchaddresses":
             res = dbHandler.fetchaddresses(self.d)
-            self.client.publish("ttm4115/15/addresses")
+            self.client.publish("ttm4115/15/addresses", res)
 
         else:
             print("Publish to topic not handled: {}".format(msg.topic))
@@ -79,8 +79,13 @@ class dbHandler:
         formatted_string = "SELECT address FROM users;"
         res = self.doquery(formatted_string)
 
-        print(res.fetch_row(0,1))
-        return res
+        list = []
+        temp = res.fetch_row(0,1)
+        for element in temp:
+            list.append(element['address'].decode('utf-8'))
+
+        print(list)
+        return json.dumps(list)
 
 
     def addresshistory(self, address):
