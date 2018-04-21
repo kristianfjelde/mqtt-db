@@ -36,7 +36,7 @@ class mqttHandler:
              if res == "err":
                  self.client.publish("ttm4115/15/hardware/", "Invalid format")
 
-        elif msg.topic == "ttm4115/15/server/register":
+        elif msg.topic == "ttm4115/15/server/register1":
             res = dbHandler.register(self.d, msg.payload)
             if res == "err":
                 self.client.publish("ttm4115/15/workstation", "Invalid format")
@@ -148,6 +148,8 @@ class dbHandler:
     def register(self, payload):
         try:
             data = json.loads(payload)
+        except TypeError as err:
+            data = json.loads(payload.decode('utf-8'))
         except json.decoder.JSONDecodeError as err:
             print(err)
             return "err"
