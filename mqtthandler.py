@@ -28,7 +28,8 @@ class mqttHandler:
             self.client.publish("ttm4115/15/userdevice", res)
 
         elif msg.topic == "ttm4115/15/server/routeplanner":
-            dbHandler.routeplanner(self.d, msg.payload)
+            res = dbHandler.routeplanner(self.d)
+            self.client.publish("ttm4115/15/fulladdresses", res)
 
         elif msg.topic == "ttm4115/15/server/update":
              res = dbHandler.updatestatus(self.d, msg.payload)
@@ -68,12 +69,25 @@ class mqttHandler:
 
 class dbHandler:
 
-    def routeplanner(self, payload):
-        data = json.loads(payload.decode('utf-8'))
-        print("Routeplanner activated")
-
+    def routeplanner(self):
         formatted_string = "SELECT bin_id, address FROM users;"
         res = self.doquery(formatted_string)
+
+        temp = res.fetch_row(0,1)
+        list = []
+
+        for element in temp:
+            temp_bin = element['bin_id'].decode('utf-8')
+            res = self.doquery("SELECT amount FROM bins WHERE bin_id = '{0}' ORDER BY time DESC".format(temp_bin))
+            temp_query = res.fetch_row(1,1)
+
+            if len(temp_query) is not 0:
+                if 'amount' in temp_query[0]:
+                    if int(temp_query[0]['amount']) >= 70:
+                        list.append(element['address'].decode('utf-8'))
+
+        end = json.dumps(list)
+        return end
 
 
 
@@ -91,7 +105,7 @@ class dbHandler:
 
 
     def addresshistory(self, address):
-        formatted_string = "SELECT * FROM users WHERE address = '{0}';".format(address)
+        formatted_string = "SELECT * FROM users WHERE address = '{0}' ORDER BY time ASC;".format(address)
         res = self.doquery(formatted_string)
 
         if res is not None:
@@ -105,9 +119,9 @@ class dbHandler:
         iter_list = res.fetch_row(0,1)
         history_list = []
         for element in iter_list:
-            history_list.append([element['amount'], element['time']])
+            history_list.append([element['time'], element['amount']])
 
-        return [address, history_list]
+        return history_list
 
 
     def fetchhistory(self, payload):
@@ -116,12 +130,15 @@ class dbHandler:
         except TypeError as err:
             print("TypeError has occured")
             print(err)
-            addressesø = json.loads(payload.decode('utf-8'))
+            addresses = json.loads(payload.decode('utf-8'))
 
-        res = []
+        res = {}
+        list = {}
 
         for element in addresses:
-            res.append(self.addresshistory(element))
+            list.update({element : self.addresshistory(element)})
+
+        res.update({"addresses" : list})
 
         print(json.dumps(res))
         return json.dumps(res)
@@ -182,6 +199,7 @@ class dbHandler:
             print("Error in db connection: {0}".format(err))
             exit(1)
 
+        self.routeplanner()
 
 
     def __exit__(self, exc_type, exc_val, exc_tb):
