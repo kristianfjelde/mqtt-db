@@ -25,7 +25,6 @@ class mqttHandler:
         print("Received message from topic {}".format(msg.topic))
         if msg.topic == "ttm4115/15/server/fetch":
             res = dbHandler.fetchhistory(self.d, msg.payload)
-
             self.client.publish("ttm4115/15/userdevice", res)
 
         elif msg.topic == "ttm4115/15/server/routeplanner":
@@ -40,6 +39,10 @@ class mqttHandler:
             res = dbHandler.register(self.d, msg.payload)
             if res == "err":
                 self.client.publish("ttm4115/15/workstation", "Invalid format")
+
+        elif msg.topic == "ttm4115/15/server/fetchaddresses":
+            res = dbHandler.fetchaddresses(self.d)
+            self.client.publish("ttm4115/15/addresses")
 
         else:
             print("Publish to topic not handled: {}".format(msg.topic))
@@ -65,12 +68,30 @@ class mqttHandler:
 
 class dbHandler:
 
+    def routeplanner(self, payload):
+        data = json.loads(payload.decode('utf-8'))
+        print("Routeplanner activated")
+
+        formatted_string = "SELECT bin_id, address FROM users;"
+        res = self.doquery(formatted_string)
+
+    def fetchaddresses(self):
+        formatted_string = "SELECT address FROM users;"
+        res = self.doquery(formatted_string)
+
+        print(res.fetch_row(0,1))
+        return res
+
+
     def addresshistory(self, address):
         print(address)
         formatted_string = "SELECT * FROM users WHERE address = '{0}';".format(address)
         res = self.doquery(formatted_string)
 
-        bin_id = res.fetch_row(res.num_rows(),1)[0]['bin_id'].decode('utf-8')
+        if res is not None:
+            bin_id = res.fetch_row(0,1)[0]['bin_id'].decode('utf-8')
+        else:
+            return "err"
 
         formatted_string = "SELECT bin_id, amount, time FROM bins WHERE bin_id = '{0}';".format(bin_id)
         res = self.doquery(formatted_string)
@@ -80,7 +101,9 @@ class dbHandler:
         for element in iter_list:
             history_list.append([element['amount'], element['time']])
 
+        print(history_list)
         return [address, [history_list]]
+
 
     def fetchhistory(self, payload):
         addresses = json.loads(payload)
@@ -93,17 +116,9 @@ class dbHandler:
 
 
 
-
-    def routeplanner(self, payload):
-        data = json.loads(payload.decode('utf-8'))
-        print("Routeplanner activated")
-
-
-
-
     def register(self, payload):
         try:
-            data = json.loads(payload.decode('utf-8'))
+            data = json.loads(payload)
         except json.decoder.JSONDecodeError as err:
             print(err)
             return "err"
@@ -156,8 +171,9 @@ class dbHandler:
             exit(1)
 
         a = ["Oljeveien 1"]
-
+        #self.register(json.dumps(a))
         self.fetchhistory(json.dumps(a))
+
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.db.close()
