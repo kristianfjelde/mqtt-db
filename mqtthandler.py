@@ -75,6 +75,8 @@ class dbHandler:
         formatted_string = "SELECT bin_id, address FROM users;"
         res = self.doquery(formatted_string)
 
+
+
     def fetchaddresses(self):
         formatted_string = "SELECT address FROM users;"
         res = self.doquery(formatted_string)
@@ -84,12 +86,11 @@ class dbHandler:
         for element in temp:
             list.append(element['address'].decode('utf-8'))
 
-        print(list)
-        return json.dumps(list)
+        dict = {'addresses' : list}
+        return json.dumps(dict)
 
 
     def addresshistory(self, address):
-        print(address)
         formatted_string = "SELECT * FROM users WHERE address = '{0}';".format(address)
         res = self.doquery(formatted_string)
 
@@ -106,8 +107,7 @@ class dbHandler:
         for element in iter_list:
             history_list.append([element['amount'], element['time']])
 
-        print(history_list)
-        return [address, [history_list]]
+        return [address, history_list]
 
 
     def fetchhistory(self, payload):
@@ -117,6 +117,7 @@ class dbHandler:
         for element in addresses:
             res.append(self.addresshistory(element))
 
+        print(json.dumps(res))
         return json.dumps(res)
 
 
@@ -175,9 +176,6 @@ class dbHandler:
             print("Error in db connection: {0}".format(err))
             exit(1)
 
-        a = ["Oljeveien 1"]
-        #self.register(json.dumps(a))
-        self.fetchhistory(json.dumps(a))
 
 
     def __exit__(self, exc_type, exc_val, exc_tb):
